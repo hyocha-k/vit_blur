@@ -48,16 +48,17 @@ def swish(x):
 
 ACT2FN = {"gelu": torch.nn.functional.gelu, "relu": torch.nn.functional.relu, "swish": swish}
 
-
 def STEFunction(inputs, threshold):
     # Define the approximation function
     scale = torch.amax(torch.abs(inputs)).clamp(min=1e-6)
-    quantized = torch.round(torch.abs(inputs / scale) ) / scale
+    quantized = torch.round(torch.abs(inputs / scale)) / scale
     quantized = quantized * torch.sign(inputs)
 
-    # Apply the approximation function conditionally
-    # Elements greater than threshold will use the quantized value
-    output = torch.where(inputs > threshold, quantized, inputs)
+    # Create a mask for the condition (inputs > threshold)
+    mask = (inputs > threshold).float()  # This will be 1.0 where condition is true, 0.0 otherwise
+
+    # Apply the approximation function using arithmetic operations
+    output = mask * quantized + (1 - mask) * inputs
 
     # Calculate and detach the difference
     difference = (inputs - output).detach()
