@@ -49,86 +49,21 @@ def swish(x):
 ACT2FN = {"gelu": torch.nn.functional.gelu, "relu": torch.nn.functional.relu, "swish": swish}
 
 
-# def min_max_quantize(inputs, bits):
-#     if bits == 32:
-#         return inputs
-
-#     scale = torch.amax(torch.abs(inputs)).clamp(min=1e-6)
-#     n = float(2**(bits-1) - 1)
-#     out = torch.round(torch.abs(inputs / scale) * n) / n * scale
-#     rounded = out * torch.sign(inputs)
-
-#     return (rounded - inputs).detach() + inputs
-
-
 def STEFunction(inputs, threshold):
-    if input > threshold:
-        return (input > threshold).float()
-
+    # Define the approximation function
     scale = torch.amax(torch.abs(inputs)).clamp(min=1e-6)
-    n = float(2**(bits-1) - 1)
-    out = torch.round(torch.abs(inputs / scale) * n) / n * scale
-    rounded = out * torch.sign(inputs)
+    quantized = torch.round(torch.abs(inputs / scale) ) / scale
+    quantized = quantized * torch.sign(inputs)
 
-    return (rounded - inputs).detach() + inputs
+    # Apply the approximation function conditionally
+    # Elements greater than threshold will use the quantized value
+    output = torch.where(inputs > threshold, quantized, inputs)
 
+    # Calculate and detach the difference
+    difference = (inputs - output).detach()
 
-def STEFunction(inputs, threshold, bits):
-    if inputs > threshold:
-        return (inputs > threshold).float()
-
-    scale = torch.amax(torch.abs(inputs)).clamp(min=1e-6)
-    n = float(2**(bits-1) - 1)
-    out = torch.round(torch.abs(inputs / scale) * n) / n * scale
-    rounded = out * torch.sign(inputs)
-
-    return (rounded - inputs).detach() + inputs    
-
-
-# class STEFunction(torch.autograd.Function):
-#     @staticmethod
-#     def forward(ctx, input, threshold):
-#         ctx.save_for_backward(input)
-#         return (input > threshold).float()
-
-#     @staticmethod
-#     def backward(ctx, grad_output):
-#         input, = ctx.saved_tensors
-#         grad_input = grad_output.clone()
-#         # Clip the gradients to avoid exploding gradients
-#         grad_input = torch.clamp(grad_input, min=-1.0, max=1.0)
-#         return grad_input, None
-
-
-# class STEFunction(torch.autograd.Function):
-#     @staticmethod
-#     def forward(ctx, input, threshold):
-#         ctx.save_for_backward(input, threshold)
-#         return (input > threshold).float()
-
-#     @staticmethod
-#     def backward(ctx, grad_output):
-#         input, threshold = ctx.saved_tensors
-#         grad_input = grad_output.clone()
-#         # Only propagate gradients for inputs close to the threshold
-#         grad_input = grad_output * (input > (threshold - 0.1)) * (input < (threshold + 0.1))
-#         return grad_input, None
-
-
-# class STEFunction(torch.autograd.Function):
-#     @staticmethod
-#     def forward(ctx, input, threshold):
-#         # Save input for backward pass
-#         ctx.save_for_backward(input)
-#         output = (input > threshold).float()
-#         return output
-
-#     @staticmethod
-#     def backward(ctx, grad_output):
-#         input, = ctx.saved_tensors
-#         grad_input = grad_output.clone()
-#         # The gradient for 'threshold' is set to None, indicating no gradient
-#         return grad_input, None
+    # Add the detached difference back to the approximation function
+    return output + difference
 
 
 class Attention(nn.Module):
