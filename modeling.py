@@ -114,7 +114,7 @@ class Attention(nn.Module):
 
         # Apply Gaussian blur conditionally using STE
         # blurred_probs = STEFunction.apply(attention_probs_reshaped, self.threshold)
-        blurred_probs = STEFunction(attention_probs_reshaped)
+        blurred_probs = self.STEFunction(attention_probs_reshaped)
 
         # Apply convolution
         blurred_probs = F.conv2d(blurred_probs, gaussian_kernel, padding=kernel_size // 2, groups=1)
