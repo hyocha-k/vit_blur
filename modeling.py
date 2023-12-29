@@ -49,25 +49,6 @@ def swish(x):
 ACT2FN = {"gelu": torch.nn.functional.gelu, "relu": torch.nn.functional.relu, "swish": swish}
 
 
-def STEFunction(inputs, threshold):
-    # Define the approximation function
-    scale = torch.amax(torch.abs(inputs)).clamp(min=1e-6)
-    quantized = torch.round(torch.abs(inputs / scale)) / scale
-    quantized = quantized * torch.sign(inputs)
-
-    # Create a mask for the condition (inputs > threshold)
-    mask = (inputs > threshold).float()  # This will be 1.0 where condition is true, 0.0 otherwise
-
-    # Apply the approximation function using arithmetic operations
-    output = mask * quantized + (1 - mask) * inputs
-
-    # Calculate and detach the difference
-    difference = (inputs - output).detach()
-
-    # Add the detached difference back to the approximation function
-    return output + difference
-
-
 class Attention(nn.Module):
     def __init__(self, config, vis):
         super(Attention, self).__init__()
@@ -100,6 +81,25 @@ class Attention(nn.Module):
         return x.permute(0, 2, 1, 3)
 
 
+    def STEFunction(self, inputs):
+        # Define the approximation function
+        scale = torch.amax(torch.abs(inputs)).clamp(min=1e-6)
+        quantized = torch.round(torch.abs(inputs / scale)) / scale
+        quantized = quantized * torch.sign(inputs)
+
+        # Create a mask for the condition (inputs > self.threshold)
+        mask = (inputs > self.threshold).float()  # This will be 1.0 where condition is true, 0.0 otherwise
+
+        # Apply the approximation function using arithmetic operations
+        output = mask * quantized + (1 - mask) * inputs
+
+        # Calculate and detach the difference
+        difference = (inputs - output).detach()
+
+        # Add the detached difference back to the approximation function
+        return output + difference        
+
+
     def apply_gaussian_blur(self, attention_probs, kernel_size):
         # Use the learnable sigma value
         gaussian_kernel = self.create_gaussian_kernel(kernel_size, sigma=self.sigma)
@@ -114,7 +114,7 @@ class Attention(nn.Module):
 
         # Apply Gaussian blur conditionally using STE
         # blurred_probs = STEFunction.apply(attention_probs_reshaped, self.threshold)
-        blurred_probs = STEFunction(attention_probs_reshaped, self.threshold)
+        blurred_probs = STEFunction(attention_probs_reshaped)
 
         # Apply convolution
         blurred_probs = F.conv2d(blurred_probs, gaussian_kernel, padding=kernel_size // 2, groups=1)
