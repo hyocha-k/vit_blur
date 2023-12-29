@@ -87,17 +87,14 @@ class Attention(nn.Module):
         quantized = torch.round(torch.abs(inputs / scale)) / scale
         quantized = quantized * torch.sign(inputs)
 
-        # Create a mask for the condition (inputs > self.threshold)
-        mask = (inputs > self.threshold).float()  # This will be 1.0 where condition is true, 0.0 otherwise
+        # Create a differentiable mask for the condition (inputs > self.threshold)
+        mask = torch.sigmoid(10 * (inputs - self.threshold))
 
-        # Apply the approximation function using arithmetic operations
+        # Apply the approximation function using differentiable arithmetic operations
         output = mask * quantized + (1 - mask) * inputs
 
-        # Calculate and detach the difference
-        difference = (inputs - output).detach()
-
-        # Add the detached difference back to the approximation function
-        return output + difference        
+        # Ensure that the computation graph is retained
+        return output + (inputs - inputs.detach())
 
 
     def apply_gaussian_blur(self, attention_probs, kernel_size):
