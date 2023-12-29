@@ -123,31 +123,6 @@ class Attention(nn.Module):
         return blurred_probs
 
 
-    # def apply_gaussian_blur(self, attention_probs, threshold, kernel_size):
-    #     # Use the learnable sigma value
-    #     gaussian_kernel = self.create_gaussian_kernel(kernel_size, sigma=self.sigma)
-    #     gaussian_kernel = gaussian_kernel.to(attention_probs.device)  # Ensure kernel is on the same device as attention_probs
-
-    #     # Adjust kernel for a single channel
-    #     gaussian_kernel = gaussian_kernel.repeat(1, 1, 1, 1)
-
-    #     # Reshape attention_probs to treat each head's attention map as a separate image
-    #     batch_size, num_heads, height, width = attention_probs.size()
-    #     attention_probs_reshaped = attention_probs.view(batch_size * num_heads, 1, height, width)
-
-    #     # Apply Gaussian blur conditionally
-    #     blurred_probs = torch.where(
-    #         # attention_probs_reshaped < threshold,
-    #         attention_probs_reshaped < self.threshold,
-    #         F.conv2d(attention_probs_reshaped, gaussian_kernel, padding=kernel_size // 2, groups=1),
-    #         attention_probs_reshaped
-    #     )
-
-    #     # Reshape back to the original shape
-    #     blurred_probs = blurred_probs.view(batch_size, num_heads, height, width)
-
-    #     return blurred_probs
-
     @staticmethod
     def create_gaussian_kernel(kernel_size, sigma):
         # Ensure sigma is a single-element tensor for compatibility
