@@ -88,7 +88,11 @@ class Attention(nn.Module):
         quantized = quantized * torch.sign(inputs)
 
         # Create a differentiable mask for the condition (inputs > self.threshold)
-        mask = torch.sigmoid(10 * (inputs - self.threshold))
+        # mask = torch.sigmoid(10 * (inputs - self.threshold))
+        mask = torch.tanh(10 * (inputs - self.threshold))
+        # mask = F.softplus(inputs - self.threshold)
+        # mask = F.leaky_relu(inputs - self.threshold, negative_slope=0.01)
+        # mask = F.gelu(inputs - self.threshold)
 
         # Apply the approximation function using differentiable arithmetic operations
         output = mask * quantized + (1 - mask) * inputs
